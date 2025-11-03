@@ -3,9 +3,13 @@ from models import db, Book, Member, Transaction
 from dotenv import load_dotenv
 import os, requests
 
-load_dotenv()
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app)  
+
+load_dotenv()
+
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv("DATABASE_URL")
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = os.getenv("SECRET_KEY")
@@ -13,10 +17,8 @@ app.config['SECRET_KEY'] = os.getenv("SECRET_KEY")
 db.init_app(app)
 
 with app.app_context():
-    # Create tables
     db.create_all()
 
-    # Seed sample books if none exist
     if Book.query.count() == 0:
         sample_books = [
             Book(title="Harry Potter and the Sorcerer's Stone", authors="J.K. Rowling", isbn="9780747532699", publisher="Bloomsbury", pages=223, stock=5),
@@ -202,7 +204,6 @@ def book_detail(book_id):
         db.session.commit()
         return jsonify({"message": f"Book '{book.title}' deleted successfully"})
 
-# --- Existing GET /members/<int:member_id> is kept, we add PUT and DELETE ---
 @app.route("/members/<int:member_id>", methods=["GET", "PUT", "DELETE"])
 def member_detail(member_id):
     member = Member.query.get_or_404(member_id)
@@ -217,18 +218,13 @@ def member_detail(member_id):
 
     elif request.method == "PUT":
         data = request.json
-        # Update fields only if they are present in the request data
         member.name = data.get("name", member.name)
         member.email = data.get("email", member.email)
-        # Note: outstanding_fee should generally not be set directly via PUT,
-        # but through a payment/return transaction.
         
         db.session.commit()
         return jsonify({"message": f"Member '{member.name}' updated successfully"})
 
     elif request.method == "DELETE":
-        # Note: You might want to add logic to prevent deletion if the member 
-        # has active transactions or outstanding fees.
         db.session.delete(member)
         db.session.commit()
         return jsonify({"message": f"Member '{member.name}' deleted successfully"})
